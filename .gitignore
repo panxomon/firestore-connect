@@ -13,3 +13,12 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+#carpetas que no voy a subir por verguenza al codigo, igual voy a terminar la idea xD
+config
+infra
+collection
+.idea
+.vscode
+about
+go.sum
