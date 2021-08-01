@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const Project_id = "ltgc-99d6e"
+const Project_id = "Prj1"
 
 type routerMux struct {
 	*http.ServeMux
