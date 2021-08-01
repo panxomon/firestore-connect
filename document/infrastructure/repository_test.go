@@ -7,9 +7,11 @@ import (
 	"testing"
 )
 
+const configFile = "config/ltgc.json"
+
 func TestReadDocumentFromFirestore(t *testing.T) {
 
-	r := NewFirestorerepository("col2")
+	r := NewFirestorerepository(configFile, "Prj1", "col2", 5)
 
 	result, err := r.Read("doc3")
 	if err != nil {
@@ -22,22 +24,22 @@ func TestReadDocumentFromFirestore(t *testing.T) {
 
 func TestCreateNewDocument(t *testing.T) {
 
-	r := NewFirestorerepository("ColecionNueva")
+	r := NewFirestorerepository("json.json", "Prj1", "col2", 25)
 
 	var documents = []document.Document{
 		{
 			Key:   "author",
-			Value: "pancho",
+			Value: "Panxo",
 			Type:  "string",
 		},
 		{
 			Key:   "body",
-			Value: "lorea el ipsum",
+			Value: "lorea el ipsum 2",
 			Type:  "string",
 		},
 		{
 			Key:   "date",
-			Value: "16 de julio 2021",
+			Value: "25de julio 2021",
 			Type:  "string",
 		},
 		{
@@ -52,7 +54,7 @@ func TestCreateNewDocument(t *testing.T) {
 		},
 	}
 
-	doc, err := r.Create(documents)
+	doc, err := r.Create("nuevoDocumento", documents)
 	if err != nil {
 		t.Errorf("error creando cliente firestore...%d\n", err)
 	}

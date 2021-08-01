@@ -10,8 +10,8 @@ type handler struct {
 }
 
 type Handler interface {
-	Get(w http.ResponseWriter, r *http.Request)
-	Post(w http.ResponseWriter, r *http.Request)
+	GetDocument(id string) http.HandlerFunc
+	CreateDocument(id string) http.HandlerFunc
 }
 
 func NewHandler(gateway document.Gateway) Handler {

@@ -6,22 +6,41 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"time"
 
 	"cloud.google.com/go/firestore"
-	firebase "firebase.google.com/go"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
 type firestoreRepository struct {
 	collection string
+	client     *firestore.Client
+	timeout    time.Duration
 }
 
-func NewFirestorerepository(collectionName string) document.Repository {
-	return &firestoreRepository{
-		collection: collectionName,
+func newClient(file string, projectID string, timeout int) (*firestore.Client, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	sa := option.WithCredentialsFile(file)
+	client, err := firestore.NewClient(ctx, projectID, sa)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func NewFirestorerepository(fileName string, projectID string, collectionName string, timeout int) document.Repository {
+	client, err := newClient(fileName, projectID, 10)
+	if err != nil {
+		log.Println("error creando un cliente firestore %w", err)
 	}
 
+	return &firestoreRepository{
+		collection: collectionName,
+		client:     client,
+		timeout:    time.Duration(timeout) * time.Second,
+	}
 }
 
 func convertType(value interface{}) string {
@@ -30,55 +49,39 @@ func convertType(value interface{}) string {
 	return str
 }
 
-func (r *firestoreRepository) Create(documents []document.Document) ([]document.Document, error) {
-
-	ctx := context.Background()
-	sa := option.WithCredentialsFile("file.json")
-
-	client, err := firestore.NewClient(ctx, "ProjectID", sa)
-
-	if err != nil {
-		log.Fatalf("fallo en crear un documento: %v", err)
-		return nil, err
-	}
+func (r *firestoreRepository) Create(id string, documents []document.Document) ([]document.Document, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
+	defer cancel()
 
 	data := make(map[string]interface{})
 	for _, value := range documents {
 		data[value.Key] = value.Value
 	}
-	d, err := client.Collection(r.collection).Doc("nuevo").Set(ctx, data)
+
+	d, err := r.client.Collection(r.collection).Doc(id).Set(ctx, data)
 	if err != nil {
-		log.Fatalf("Failed adding alovelace: %v", err)
+		log.Fatalf("Error agregando coleccion a cliente: %v", err)
 		return nil, err
 	}
 
 	fmt.Println(d.UpdateTime)
 
 	return documents, nil
-
 }
 
 func (r *firestoreRepository) Read(idCollection string) ([]document.Document, error) {
-	ctx := context.Background()
-	sa := option.WithCredentialsFile("file.json")
-
-	client, err := firestore.NewClient(ctx, "ProjectID", sa)
-	if err != nil {
-		log.Println("creando app.Firestore(ctx)")
-		log.Fatalln(err)
-	}
-
-	var documents []document.Document
-	defer client.Close()
-	dsnap, err := client.Collection(r.collection).Doc(idCollection).Get(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
+	defer cancel()
+	dsnap, err := r.client.Collection(r.collection).Doc(idCollection).Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-
+	var documents []document.Document
 	m := dsnap.Data()
 
 	for key, value := range m {
 		var p document.Document
+		p.Id = idCollection
 		p.Key = key
 		p.Value = convertType(value)
 		p.Type = convertType(reflect.TypeOf(value))
@@ -89,23 +92,12 @@ func (r *firestoreRepository) Read(idCollection string) ([]document.Document, er
 }
 
 func (r *firestoreRepository) GetAll() ([]document.Document, error) {
-	ctx := context.Background()
-	sa := option.WithCredentialsFile("file.json")
-	app, err := firebase.NewApp(ctx, nil, sa)
-	if err != nil {
-		log.Println("creando new app (ctx, nil, sa)")
-		log.Fatalln(err)
-	}
-
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Println("creando app.Firestore(ctx)")
-		log.Fatalln(err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
+	defer cancel()
 
 	var documents []document.Document
 
-	iter := client.Collection(r.collection).Documents(ctx)
+	iter := r.client.Collection(r.collection).Documents(ctx)
 
 	for {
 		doc, err := iter.Next()
@@ -128,7 +120,6 @@ func (r *firestoreRepository) GetAll() ([]document.Document, error) {
 		}
 
 		fmt.Println(documents)
-		defer client.Close()
 	}
 
 	return documents, nil

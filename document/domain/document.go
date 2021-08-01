@@ -8,6 +8,6 @@ type Document struct {
 }
 
 type Repository interface {
-	Create(documents []Document) ([]Document, error)
+	Create(id string, documents []Document) ([]Document, error)
 	Read(idCollection string) ([]Document, error)
 }
